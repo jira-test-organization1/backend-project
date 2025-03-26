@@ -2,7 +2,7 @@ name: Create Jira issue
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 jobs:
   create-issue:
