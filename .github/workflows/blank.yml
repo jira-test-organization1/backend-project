@@ -25,6 +25,15 @@ jobs:
         ISSUE_URL: ${{ github.event.issue.html_url }}
         ISSUE_BODY: ${{ github.event.issue.body }}
 
+    - name: Read converted description
+      id: read_desc
+      run: |
+        {
+          echo "desc<<EOF"
+          cat jira-description.txt
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+
     - name: Login to Jira
       uses: atlassian/gajira-login@v3
       env:
@@ -38,13 +47,4 @@ jobs:
         project: NEW
         issuetype: Task
         summary: '${{ github.event.issue.title }}'
-        description: ${{ steps.convert.outputs.jira_description }}
-      env:
-        JIRA_DESCRIPTION: ${{ steps.read_desc.outputs.desc }}
-
-    - name: Read converted description
-      id: read_desc
-      run: |
-        echo "desc<<EOF" >> $GITHUB_OUTPUT
-        cat jira-description.txt >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        description: '${{ steps.read_desc.outputs.desc }}'
