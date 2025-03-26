@@ -21,5 +21,7 @@ jobs: # 3
         project: NEW
         issuetype: Task
         summary: '${{ github.event.issue.title }}'
-        description: '${{ github.event.issue.html_url }}\n${{ github.event.issue.body }}'
+        description: |
+          GitHub Issue 링크: ${{ github.event.issue.html_url }}
 
+          ${{ github.event.issue.body }}
