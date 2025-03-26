@@ -28,11 +28,9 @@ jobs:
     - name: Read converted description
       id: read_desc
       run: |
-        {
-          echo "desc<<EOF"
-          cat jira-description.txt
-          echo "EOF"
-        } >> $GITHUB_OUTPUT
+        echo "desc<<EOF" >> $GITHUB_OUTPUT
+        printf "%s\n" "$(cat jira-description.txt)" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
 
     - name: Login to Jira
       uses: atlassian/gajira-login@v3
