@@ -1,11 +1,11 @@
-name: Sync GitHub Issue to Jira
+name: Create Jira issue
 
 on:
   issues:
     types: [opened, edited]
 
 jobs:
-  sync-jira:
+  create-issue:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +18,8 @@ jobs:
         node-version: 18
 
     - name: Convert GitHub markdown to Jira markup
-      run: node scripts/md-to-jira.js
+      run: |
+        node scripts/md-to-jira.js
       env:
         ISSUE_TITLE: ${{ github.event.issue.title }}
         ISSUE_URL: ${{ github.event.issue.html_url }}
@@ -30,7 +31,6 @@ jobs:
         echo "desc<<EOF" >> $GITHUB_OUTPUT
         printf "%s\n" "$(cat jira-description.txt)" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
-
     - name: Login to Jira
       uses: atlassian/gajira-login@v3
       env:
@@ -38,62 +38,10 @@ jobs:
         JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
 
-    - name: Conditionally Create or Update Jira
-      if: github.event.action == 'opened'
-      id: create_jira
+    - name: Create Jira Issue
       uses: atlassian/gajira-create@v3
       with:
         project: NEW
         issuetype: Task
         summary: '${{ github.event.issue.title }}'
         description: '${{ steps.read_desc.outputs.desc }}'
-
-    - name: Save Jira key to GitHub Issue (as comment)
-      if: github.event.action == 'opened'
-      uses: actions/github-script@v6
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          await github.rest.issues.createComment({
-          issue_number: context.issue.number,
-          owner: context.repo.owner,
-          repo: context.repo.repo,
-          body: `Linked Jira issue: ${{ steps.create_jira.outputs.issue }}`
-          });
-
-    - name: Extract Jira key from comment
-      if: github.event.action == 'edited'
-      id: extract
-      uses: actions/github-script@v6
-      with:
-        result-encoding: string
-        script: |
-          const { data: comments } = await github.issues.listComments({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo
-          });
-
-          const comment = comments.find(c => c.body.startsWith("Linked Jira issue:"));
-          if (!comment) throw new Error("Jira issue key not found in comments.");
-          return comment.body.split("Linked Jira issue:")[1].trim();
-
-    - name: Update Jira Issue (via API)
-      if: github.event.action == 'edited'
-      run: |
-        curl -X PUT \
-          --url "$JIRA_BASE_URL/rest/api/3/issue/${{ steps.extract.outputs.result }}" \
-          --user "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
-          --header 'Content-Type: application/json' \
-          --data @- <<EOF
-        {
-          "fields": {
-          "summary": "${{ github.event.issue.title }}",
-          "description": "${{ steps.read_desc.outputs.desc }}"
-          }
-        }
-        EOF
-      env:
-        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
-        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
